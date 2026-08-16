@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>梳妆台 · 护肤彩妆管理</title>
+<!-- 本工作台由 WorkBuddy 小台搭建，本地 localStorage 存储 + 在线链接部署 -->
+<style>
+:root{
+  --bg:#f7f5f3; --card:#ffffff; --ink:#2d2622; --ink2:#6b6157; --ink3:#a89e94;
+  --line:#ece7e2; --primary:#c08552; --primary2:#9a6638; --primary-soft:#f4e8dc;
+  --rose:#c75b5b; --green:#7ba068; --gold:#d4a44e; --blue:#6f93b0;
+  --shadow:0 1px 3px rgba(60,40,20,.04),0 6px 18px rgba(60,40,20,.05);
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{padding-bottom:calc(72px + env(safe-area-inset-bottom));max-width:1200px;margin:0 auto}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);background:none;border:none;outline:none;width:100%}
+input::placeholder,textarea::placeholder{color:var(--ink3)}
+.app{padding:14px 14px 0}
+/* header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px}
+.title-wrap h1{font-size:20px;font-weight:700;letter-spacing:.5px}
+.title-wrap p{font-size:12px;color:var(--ink3);margin-top:2px}
+.sync-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3);background:var(--card);padding:5px 10px;border-radius:20px;box-shadow:var(--shadow)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+/* tabs */
+.tabs{position:sticky;top:0;z-index:20;background:var(--bg);display:flex;gap:6px;padding:8px 0 12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;color:var(--ink2);background:var(--card);box-shadow:var(--shadow);transition:.2s}
+.tab.active{background:var(--primary);color:#fff}
+/* backup bar */
+.backup-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.btn{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:500;background:var(--card);color:var(--ink2);box-shadow:var(--shadow);display:inline-flex;align-items:center;gap:5px;transition:.15s}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-ghost{background:transparent;box-shadow:none;color:var(--ink3)}
+.btn svg{width:14px;height:14px}
+/* today */
+.section-title{font-size:13px;font-weight:600;color:var(--ink2);margin:4px 2px 10px;display:flex;align-items:center;gap:6px}
+.section-title svg{width:15px;height:15px;color:var(--primary)}
+.today-card{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.today-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.today-item:last-child{border-bottom:none;padding-bottom:0}
+.today-item:first-child{padding-top:0}
+.today-tag{flex-shrink:0;width:5px;height:36px;border-radius:3px}
+.today-info{flex:1;min-width:0}
+.today-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.today-desc{font-size:11px;color:var(--ink3);margin-top:2px}
+.today-desc.warn{color:var(--rose)}
+.today-act{flex-shrink:0;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:500;background:var(--primary-soft);color:var(--primary2)}
+.today-empty{text-align:center;color:var(--ink3);font-size:13px;padding:16px 0}
+/* cards grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.pcard{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);position:relative;transition:.15s}
+.pcard:active{transform:scale(.99)}
+.pcard-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px}
+.pcard-brand{font-size:11px;color:var(--primary2);font-weight:600;letter-spacing:.3px}
+.pcard-name{font-size:14px;font-weight:600;margin-top:2px;line-height:1.3}
+.pcard-spec{font-size:11px;color:var(--ink3);margin-top:3px}
+.status-chip{flex-shrink:0;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:.3px}
+.st-sealed{background:#eef2f5;color:#7d8a93}
+.st-using{background:#e8f0e3;color:var(--green)}
+.st-empty{background:#f0ece6;color:var(--ink3)}
+.st-warning{background:#fdeaea;color:var(--rose)}
+.pcard-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:11px;color:var(--ink2);margin-bottom:8px}
+.meta-item{display:flex;gap:4px;align-items:center}
+.meta-label{color:var(--ink3);flex-shrink:0}
+.pcard-foot{display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--line);margin-top:4px}
+.score-stars{display:flex;align-items:center;gap:2px}
+.star{width:13px;height:13px;color:var(--gold)}
+.season-chips{display:flex;gap:4px;flex-wrap:wrap}
+.season-chip{font-size:9px;padding:2px 6px;border-radius:6px;background:#f4f1ed;color:var(--ink2)}
+.stock-bar{height:4px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
+.stock-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--gold));border-radius:2px}
+/* panel */
+.panel{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat-box{text-align:center;padding:10px 4px;background:#faf8f6;border-radius:10px}
+.stat-num{font-size:20px;font-weight:700;color:var(--primary)}
+.stat-num.rose{color:var(--rose)}
+.stat-num.green{color:var(--green)}
+.stat-label{font-size:10px;color:var(--ink3);margin-top:3px}
+.chart-block{margin-top:10px}
+.chart-title{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:8px}
+.chart-svg{width:100%;height:auto;display:block}
+/* wall & rebuy & price */
+.wall-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rebuy-chip{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;flex-shrink:0}
+.rb-yes{background:#e8f0e3;color:var(--green)}
+.rb-maybe{background:#fdf3e0;color:var(--gold)}
+.rb-no{background:#fdeaea;color:var(--rose)}
+.trend{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;flex-shrink:0}
+.trend.down{background:#e8f0e3;color:var(--green)}
+.trend.up{background:#fdeaea;color:var(--rose)}
+.trend.flat{background:#f0ece6;color:var(--ink3)}
+.price-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.price-row:last-child{border-bottom:none}
+.rebuy-act{padding:9px 14px;border-radius:9px;font-size:12px;font-weight:600;background:var(--primary-soft);color:var(--primary2);flex-shrink:0;transition:.15s}
+.rebuy-act:active{transform:scale(.95)}
+/* bundle */
+.bundle-chip{font-size:9px;padding:2px 6px;border-radius:6px;background:var(--primary-soft);color:var(--primary2);margin-left:4px;font-weight:600;white-space:nowrap}
+.bundle-hint{display:flex;align-items:center;gap:8px;background:var(--primary-soft);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--primary2)}
+.bundle-hint svg{width:15px;height:15px;flex-shrink:0}
+.bundle-hint button{margin-left:auto;font-weight:700;white-space:nowrap;color:var(--primary2)}
+.b-summary{background:#faf8f6;border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink2);margin-bottom:12px}
+.b-item{border:1px solid var(--line);border-radius:12px;padding:12px 12px 4px;margin-bottom:10px}
+.b-item-foot{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 10px}
+.b-alloc{font-size:12px;color:var(--primary2);font-weight:700}
+.bi-del{font-size:12px;color:var(--rose);padding:6px 10px}
+/* form modal */
+.modal-mask{position:fixed;inset:0;background:rgba(45,38,34,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.modal-mask.show{display:flex}
+.modal{background:var(--card);width:100%;max-width:560px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;animation:sheet .25s ease}
+@keyframes sheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+.modal-head h3{font-size:16px;font-weight:600}
+.modal-close{width:32px;height:32px;border-radius:50%;background:#f4f1ed;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+.modal-body{overflow-y:auto;padding:16px 18px;-webkit-overflow-scrolling:touch}
+.modal-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;flex-shrink:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.modal-foot .btn{flex:1;justify-content:center;padding:12px}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:6px;display:block}
+.form-label .req{color:var(--rose)}
+.form-input,.form-select,.form-textarea{width:100%;padding:11px 12px;background:#faf8f6;border-radius:10px;border:1.5px solid transparent;transition:.15s;font-size:16px}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--primary);background:#fff}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.5}
+.form-select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a89e94' stroke-width='2.5'><polyline points='6,9 12,15 18,9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.season-pick{display:flex;gap:6px;flex-wrap:wrap}
+.season-opt{padding:7px 14px;border-radius:8px;background:#faf8f6;font-size:12px;color:var(--ink2);border:1.5px solid transparent}
+.season-opt.on{background:var(--primary-soft);color:var(--primary2);border-color:var(--primary)}
+.score-pick{display:flex;gap:4px}
+.score-opt{width:32px;height:32px;border-radius:8px;background:#faf8f6;display:flex;align-items:center;justify-content:center}
+.score-opt svg{width:18px;height:18px;color:var(--ink3)}
+.score-opt.on svg{color:var(--gold)}
+.stock-pick{display:flex;gap:6px}
+.stock-opt{flex:1;padding:8px;border-radius:8px;background:#faf8f6;font-size:11px;color:var(--ink2);text-align:center;border:1.5px solid transparent}
+.stock-opt.on{background:var(--primary-soft);color:var(--primary2);border-color:var(--primary)}
+/* filter */
+.filter-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-opt{flex-shrink:0;padding:6px 12px;border-radius:14px;font-size:12px;color:var(--ink2);background:var(--card);box-shadow:var(--shadow)}
+.filter-opt.active{background:var(--ink);color:#fff}
+/* float add btn */
+.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:var(--primary);color:#fff;box-shadow:0 6px 20px rgba(192,133,82,.45);display:flex;align-items:center;justify-content:center;z-index:50;transition:.15s}
+.fab:active{transform:scale(.92)}
+.fab svg{width:24px;height:24px}
+/* bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:1200px;margin:0 auto;background:var(--card);box-shadow:0 -1px 8px rgba(60,40,20,.06);display:none;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:40}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 7px;color:var(--ink3);font-size:10px}
+.nav-item svg{width:20px;height:20px}
+.nav-item.active{color:var(--primary)}
+/* toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:200;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+/* confirm */
+.confirm-mask{position:fixed;inset:0;background:rgba(45,38,34,.5);z-index:150;display:none;align-items:center;justify-content:center;padding:24px}
+.confirm-mask.show{display:flex}
+.confirm-box{background:var(--card);border-radius:16px;padding:22px;max-width:320px;width:100%;text-align:center}
+.confirm-box p{font-size:14px;color:var(--ink);margin-bottom:18px;line-height:1.6}
+.confirm-actions{display:flex;gap:10px}
+.confirm-actions .btn{flex:1;justify-content:center;padding:11px}
+/* search */
+.search-box{position:relative;margin-bottom:12px}
+.search-box svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--ink3)}
+.search-box input{padding:10px 12px 10px 38px;background:var(--card);border-radius:10px;box-shadow:var(--shadow)}
+.view-toggle{display:flex;gap:6px;margin-bottom:12px;justify-content:flex-end}
+.view-toggle .btn{padding:7px 12px;font-size:12px}
+.view-toggle .btn.active{background:var(--ink);color:#fff}
+.empty{text-align:center;padding:40px 20px;color:var(--ink3)}
+.empty svg{width:48px;height:48px;color:var(--line);margin-bottom:10px}
+.detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-label{color:var(--ink3)}
+.detail-val{color:var(--ink);font-weight:500;text-align:right;max-width:60%;word-break:break-word}
+.review-box{background:#faf8f6;border-radius:10px;padding:12px;font-size:13px;color:var(--ink2);line-height:1.6;margin-top:8px;white-space:pre-wrap}
+@media(min-width:768px){
+  body{padding-bottom:24px}
+  .bottom-nav{display:flex !important}
+  .fab{display:flex}
+  .app{padding:18px 22px 0}
+  .title-wrap h1{font-size:24px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+}
+@media(max-width:767px){
+  .bottom-nav{display:flex}
+  .fab{display:flex}
+  .stat-row,.wall-stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- header -->
+  <div class="header">
+    <div class="title-wrap">
+      <h1>梳妆台</h1>
+      <p id="subTitle">护肤品 · 彩妆管理</p>
+    </div>
+    <div class="sync-badge">
+      <span class="sync-dot"></span><span id="syncText">本地存储</span>
+    </div>
+  </div>
+
+  <!-- backup bar -->
+  <div class="backup-bar">
+    <button class="btn" id="exportBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      导出备份
+    </button>
+    <button class="btn" id="importBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,15 12,10 7,15"/><line x1="12" y1="10" x2="12" y2="22"/></svg>
+      导入恢复
+    </button>
+    <button class="btn btn-ghost" id="clearBtn" style="margin-left:auto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      清空
+    </button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+
+  <!-- tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="today">今天要处理</button>
+    <button class="tab" data-tab="archive">产品档案</button>
+    <button class="tab" data-tab="wall">空瓶墙</button>
+    <button class="tab" data-tab="rebuy">回购清单</button>
+    <button class="tab" data-tab="price">价格对比</button>
+    <button class="tab" data-tab="dashboard">看板</button>
+    <button class="tab" data-tab="review">使用感受</button>
+  </div>
+
+  <!-- today view -->
+  <div id="view-today" class="view">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      今日待办
+    </div>
+    <div class="today-card" id="todayList"></div>
+  </div>
+
+  <!-- archive view -->
+  <div id="view-archive" class="view" style="display:none">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="搜索品牌、产品名、品类...">
+    </div>
+    <div class="filter-bar" id="filterBar"></div>
+    <div class="grid" id="archiveGrid"></div>
+  </div>
+
+  <!-- wall view -->
+  <div id="view-wall" class="view" style="display:none">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6M10 2v4l-3 4v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9l-3-4V2"/></svg>
+      空瓶墙 · 用完的都值得纪念
+    </div>
+    <div class="today-card" style="margin-bottom:12px"><div class="wall-stats" id="wallStats"></div></div>
+    <div class="grid" id="wallGrid"></div>
+  </div>
+
+  <!-- rebuy view -->
+  <div id="view-rebuy" class="view" style="display:none">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      回购清单 · 下次买什么一目了然
+    </div>
+    <div class="filter-bar" id="rebuyFilter"></div>
+    <div id="rebuyList"></div>
+  </div>
+
+  <!-- price view -->
+  <div id="view-price" class="view" style="display:none">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      价格对比 · 买贵了还是买赚了
+    </div>
+    <p style="font-size:12px;color:var(--ink3);margin:0 2px 12px">同一产品多次购买或手动记录的价格，自动汇总成价格曲线</p>
+    <div id="priceList"></div>
+  </div>
+
+  <!-- dashboard view -->
+  <div id="view-dashboard" class="view" style="display:none">
+    <div class="panel">
+      <div class="stat-row" id="statRow"></div>
+    </div>
+    <div class="panel">
+      <div class="chart-title">月度开销趋势</div>
+      <div class="chart-block" id="spendChart"></div>
+    </div>
+    <div class="panel">
+      <div class="chart-title">品类分布</div>
+      <div class="chart-block" id="categoryChart" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"></div>
+    </div>
+    <div class="panel">
+      <div class="chart-title">使用状态</div>
+      <div class="chart-block" id="statusChart" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+
+  <!-- review view -->
+  <div id="view-review" class="view" style="display:none">
+    <div class="filter-bar" id="reviewFilter"></div>
+    <div id="reviewList"></div>
+  </div>
+</div>
+
+<!-- fab -->
+<button class="fab" id="fab">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- bottom nav -->
+<div class="bottom-nav">
+  <button class="nav-item active" data-nav="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>首页</button>
+  <button class="nav-item" data-nav="archive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>档案</button>
+  <button class="nav-item" data-nav="wall"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6M10 2v4l-3 4v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9l-3-4V2"/></svg>空瓶</button>
+  <button class="nav-item" data-nav="rebuy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>回购</button>
+  <button class="nav-item" data-nav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>看板</button>
+  <button class="nav-item" data-nav="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>感受</button>
+</div>
+
+<!-- form modal -->
+<div class="modal-mask" id="formModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="formTitle">添加产品</h3>
+      <button class="modal-close" id="formClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="formBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="formCancel" style="flex:0 0 auto">取消</button>
+      <button class="btn btn-primary" id="formSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- detail modal -->
+<div class="modal-mask" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="detailTitle">产品详情</h3>
+      <button class="modal-close" id="detailClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="detailEdit" style="flex:1">编辑</button>
+      <button class="btn btn-primary" id="detailDelete" style="flex:1;background:var(--rose)">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- price log modal -->
+<div class="modal-mask" id="priceModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="priceTitle">记一笔价格</h3>
+      <button class="modal-close" id="priceClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">日期</label><input class="form-input" id="pf-date" type="date"></div>
+      <div class="form-group"><label class="form-label">价格 ¥ <span class="req">*</span></label><input class="form-input" id="pf-price" type="number" inputmode="decimal" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">渠道 / 备注</label><input class="form-input" id="pf-channel" placeholder="如 天猫双11 / 专柜 / 代购"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="priceCancel" style="flex:0 0 auto">取消</button>
+      <button class="btn btn-primary" id="priceSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- bundle modal -->
+<div class="modal-mask" id="bundleModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>套装录入 · 自动分摊</h3>
+      <button class="modal-close" id="bundleClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">套装名称</label><input class="form-input" id="b-name" placeholder="如 双11礼盒"></div>
+        <div class="form-group"><label class="form-label">购买时间</label><input class="form-input" id="b-date" type="date"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">套装总价 ¥ <span class="req">*</span></label><input class="form-input" id="b-total" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">渠道</label><input class="form-input" id="b-channel" placeholder="天猫/专柜（选填）"></div>
+      </div>
+      <div id="b-summary" class="b-summary" style="display:none"></div>
+      <div class="form-label" style="margin:4px 0 8px">套装内产品（至少 2 件，填「单买价」用于按比例分摊）</div>
+      <div id="b-items"></div>
+      <button class="btn" id="b-add" style="width:100%;justify-content:center;border:1.5px dashed var(--line);box-shadow:none;color:var(--ink2)">+ 添加一件</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="b-cancel" style="flex:0 0 auto">取消</button>
+      <button class="btn btn-primary" id="b-save">生成分摊记录</button>
+    </div>
+  </div>
+</div>
+
+<!-- confirm -->
+<div class="confirm-mask" id="confirmMask">
+  <div class="confirm-box">
+    <p id="confirmText">确定要清空所有数据吗？</p>
+    <div class="confirm-actions">
+      <button class="btn" id="confirmCancel">取消</button>
+      <button class="btn btn-primary" id="confirmOk" style="background:var(--rose)">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORE_KEY='wb_dresser_products';
+const PRICELOG_KEY='wb_dresser_priceLog';
+const CATEGORIES=['护肤-洁面','护肤-水乳','护肤-精华','护肤-面霜','护肤-防晒','护肤-面膜','彩妆-底妆','彩妆-唇妆','彩妆-眼妆','彩妆-眉妆','彩妆-卸妆','其他'];
+const SEASONS=['春','夏','秋','冬'];
+const STATUS=[{k:'sealed',t:'未开封',c:'st-sealed'},{k:'using',t:'使用中',c:'st-using'},{k:'empty',t:'已空瓶',c:'st-empty'},{k:'warning',t:'临期',c:'st-warning'}];
+
+let products=[];
+let priceLogs={};
+let currentTab='today';
+let editingId=null;
+let filterStatus='all';
+let filterCat='all';
+let reviewSeason='all';
+let reviewScore='all';
+let searchKw='';
+let confirmCb=null;
+
+// ---------- utils ----------
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtDate=d=>{if(!d)return '—';return d.replace(/-/g,'/')};
+const daysBetween=(a,b)=>{if(!a||!b)return 0;const d=(new Date(b)-new Date(a))/86400000;return Math.round(d)};
+const fmtMoney=n=>n?'¥'+Number(n).toLocaleString():'—';
+
+function loadData(){
+  try{const raw=localStorage.getItem(STORE_KEY);products=raw?JSON.parse(raw):[]}
+  catch(e){products=[]}
+  try{priceLogs=JSON.parse(localStorage.getItem(PRICELOG_KEY))||{}}catch(e){priceLogs={}}
+  // 数据迁移：老数据补回购意愿字段，保证向后兼容
+  products.forEach(p=>{if(p.repurchase===undefined)p.repurchase=''});
+  if(!products.length){seedDemo()}
+}
+function saveData(){
+  localStorage.setItem(STORE_KEY,JSON.stringify(products));
+  localStorage.setItem(PRICELOG_KEY,JSON.stringify(priceLogs));
+  updateSync();
+}
+function updateSync(){
+  $('#syncText').textContent='本地 · '+products.length+'件';
+}
+
+function seedDemo(){
+  const now=new Date();
+  const ds=(n)=>{const d=new Date(now);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  products=[
+    {id:uid(),brand:'兰蔻',name:'小黑瓶精华肌底液',category:'护肤-精华',spec:'50ml',price:1080,buyDate:ds(-380),openDate:ds(-120),emptyDate:'',expireDate:ds(-3),shelfLife:'24个月',stock:30,seasons:['春','秋'],score:5,feeling:'维稳效果好，换季必备，用完皮肤很稳定，会回购。',status:'warning',repurchase:'yes',createdAt:ds(-380)},
+    {id:uid(),brand:'雅诗兰黛',name:'DW粉底液',category:'彩妆-底妆',spec:'30ml NW12',price:420,buyDate:ds(-90),openDate:ds(-60),emptyDate:'',expireDate:ds(+700),shelfLife:'12个月PAO',stock:60,seasons:['夏'],score:4,feeling:'遮瑕力强，持妆久，夏天出汗也不脱妆，但稍微有点干。',status:'using',repurchase:'maybe',createdAt:ds(-90)},
+    {id:uid(),brand:'珂润',name:'润浸保湿面霜',category:'护肤-面霜',spec:'40g',price:135,buyDate:ds(-30),openDate:'',emptyDate:'',expireDate:ds(+1000),shelfLife:'3年',stock:100,seasons:['春','秋','冬'],score:5,feeling:'敏感肌救星，温和不刺激，保湿力够。',status:'sealed',repurchase:'yes',createdAt:ds(-30)},
+    {id:uid(),brand:'植村秀',name:'砍刀眉笔',category:'彩妆-眉妆',spec:'04 苦茶棕',price:188,buyDate:ds(-400),openDate:ds(-380),emptyDate:ds(-10),expireDate:'',shelfLife:'36个月',stock:0,seasons:['春','夏','秋','冬'],score:5,feeling:'用了好几支了，笔画自然，不易断，已经空瓶回购。',status:'empty',repurchase:'yes',createdAt:ds(-400)},
+    {id:uid(),brand:'理肤泉',name:'B5修复面霜',category:'护肤-面霜',spec:'40ml',price:159,buyDate:ds(-200),openDate:ds(-150),emptyDate:'',expireDate:ds(+20),shelfLife:'12个月PAO',stock:50,seasons:['秋','冬'],score:4,feeling:'修复泛红很有效，但质地偏厚，油皮夏天慎用。',status:'using',repurchase:'no',createdAt:ds(-200)},
+    {id:uid(),brand:'植村秀',name:'砍刀眉笔',category:'彩妆-眉妆',spec:'04 苦茶棕（旧）',price:158,buyDate:ds(-800),openDate:ds(-780),emptyDate:ds(-410),expireDate:'',shelfLife:'36个月',stock:0,seasons:['春','秋','冬'],score:5,feeling:'上一支空瓶，当时买入价比现在便宜30，日常够用。',status:'empty',repurchase:'yes',createdAt:ds(-800)},
+    {id:uid(),brand:'薇诺娜',name:'舒护特护霜',category:'护肤-面霜',spec:'50g',price:237,buyDate:ds(-15),openDate:'',emptyDate:'',expireDate:ds(+1000),shelfLife:'3年',stock:100,seasons:[],score:0,feeling:'',status:'sealed',repurchase:'',bundle:'双11礼盒·天猫',bundleTotal:399,createdAt:ds(-15)},
+    {id:uid(),brand:'薇诺娜',name:'清透防晒乳',category:'护肤-防晒',spec:'50g',price:162,buyDate:ds(-15),openDate:'',emptyDate:'',expireDate:ds(+1000),shelfLife:'3年',stock:100,seasons:['夏'],score:0,feeling:'',status:'sealed',repurchase:'',bundle:'双11礼盒·天猫',bundleTotal:399,createdAt:ds(-15)}
+  ];
+  priceLogs={
+    '兰蔻|小黑瓶精华肌底液':[
+      {date:ds(-750),price:1150,channel:'专柜原价'},
+      {date:ds(-390),price:980,channel:'天猫双11'}
+    ]
+  };
+  saveData();
+}
+
+// ---------- status calc ----------
+function calcStatus(p){
+  if(p.status==='empty')return 'empty';
+  if(p.expireDate){
+    const left=daysBetween(today(),p.expireDate);
+    if(left<0)return 'warning';
+    if(left<=30)return 'warning';
+  }
+  if(p.status==='sealed')return 'sealed';
+  return 'using';
+}
+function statusInfo(k){return STATUS.find(s=>s.k===k)||STATUS[2]}
+
+// ---------- price group helpers ----------
+const norm=s=>String(s||'').trim().toLowerCase();
+const legacyKey=p=>(p.brand.trim()+'|'+p.name.trim()).toLowerCase();
+const gKey=p=>(p.brand.trim()+'|'+p.name.trim()+'|'+norm(p.spec)).toLowerCase();
+// 解析规格中的容量/重量：支持 50ml / 15ml×2 / 2×15ml / 40g / 100毫升
+function parseSpecQty(spec){
+  if(!spec)return null;
+  const s=String(spec).toLowerCase();
+  let m=s.match(/(\d+(?:\.\d+)?)\s*(ml|毫升|g|克)\s*(?:[×x*]\s*(\d+))?/);
+  if(m){
+    let qty=parseFloat(m[1]);
+    const unit=(m[2]==='ml'||m[2]==='毫升')?'ml':'g';
+    if(m[3])qty*=Number(m[3]);
+    return{qty,unit};
+  }
+  m=s.match(/(\d+)\s*[×x*]\s*(\d+(?:\.\d+)?)\s*(ml|毫升|g|克)/);
+  if(m){
+    const qty=Number(m[1])*parseFloat(m[2]);
+    const unit=(m[3]==='ml'||m[3]==='毫升')?'ml':'g';
+    return{qty,unit};
+  }
+  return null;
+}
+// 合并购买记录 + 手动价格记录（兼容旧的无规格日志 key）
+function priceRecordsFor(g){
+  const full=gKey(g),legacy=legacyKey(g);
+  const recs=[];
+  products.forEach(p=>{
+    if(gKey(p)===full&&p.buyDate&&p.price)recs.push({date:p.buyDate,price:Number(p.price),channel:p.bundle?('套装分摊·'+p.bundle):'购买记录'});
+  });
+  const seen=new Set(recs.map(r=>r.date+'|'+r.price));
+  [full,legacy].forEach(k=>{
+    (priceLogs[k]||[]).forEach(r=>{
+      const sig=r.date+'|'+Number(r.price);
+      if(!seen.has(sig)){seen.add(sig);recs.push({date:r.date,price:Number(r.price),channel:r.channel||'手动记录'})}
+    });
+  });
+  recs.sort((a,b)=>a.date<b.date?-1:1);
+  return recs;
+}
+
+// ---------- render ----------
+function render(){
+  renderToday();
+  renderArchive();
+  renderWall();
+  renderRebuy();
+  renderPrice();
+  renderDashboard();
+  renderReview();
+  updateSync();
+}
+
+function renderToday(){
+  const list=$('#todayList');
+  const items=[];
+  products.forEach(p=>{
+    const st=calcStatus(p);
+    // 过期/临期
+    if(st==='warning'){
+      const left=p.expireDate?daysBetween(today(),p.expireDate):0;
+      items.push({p,tag:'#fdeaea',color:'var(--rose)',desc:left<0?`已过期 ${Math.abs(left)} 天，建议停用`:`距过期仅 ${left} 天`,act:'去处理'});
+    }
+    // 未开封但已买超过60天（建议启用）
+    if(st==='sealed' && p.buyDate && daysBetween(p.buyDate,today())>60){
+      items.push({p,tag:'#eef2f5',color:'#7d8a93',desc:`购于 ${fmtDate(p.buyDate)}，已囤 ${daysBetween(p.buyDate,today())} 天，可启用`,act:'启用'});
+    }
+    // 库存告急（使用中且库存<20%）
+    if(st==='using' && p.stock<20){
+      items.push({p,tag:'#fdf3e0',color:'var(--gold)',desc:`库存仅剩 ${p.stock}%，可考虑补货`,act:'补货'});
+    }
+    // 空瓶待复盘
+    if(p.status==='empty' && !p.feeling){
+      items.push({p,tag:'#f0ece6',color:'var(--ink3)',desc:'已空瓶，快记录使用感受',act:'写感受'});
+    }
+  });
+  if(!items.length){
+    list.innerHTML=`<div class="today-empty">今天没有需要处理的事项，状态很棒～</div>`;
+    return;
+  }
+  list.innerHTML=items.map(it=>`
+    <div class="today-item">
+      <div class="today-tag" style="background:${it.tag}"></div>
+      <div class="today-info">
+        <div class="today-name">${it.p.brand} · ${it.p.name}</div>
+        <div class="today-desc ${it.color==='var(--rose)'?'warn':''}">${it.desc}</div>
+      </div>
+      <button class="today-act" style="color:${it.color}" data-id="${it.p.id}">${it.act}</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.today-act').forEach(b=>{
+    b.onclick=()=>openForm(b.dataset.id);
+  });
+}
+
+function renderFilterBar(){
+  const bar=$('#filterBar');
+  const cats=['all',...CATEGORIES];
+  bar.innerHTML=cats.map(c=>`<button class="filter-opt ${filterCat===c?'active':''}" data-cat="${c}">${c==='all'?'全部品类':c}</button>`).join('');
+  bar.querySelectorAll('.filter-opt').forEach(b=>{
+    b.onclick=()=>{filterCat=b.dataset.cat;renderFilterBar();renderArchive()};
+  });
+}
+
+function renderArchive(){
+  renderFilterBar();
+  const grid=$('#archiveGrid');
+  let list=products.filter(p=>{
+    if(filterStatus!=='all' && calcStatus(p)!==filterStatus)return false;
+    if(filterCat!=='all' && p.category!==filterCat)return false;
+    if(searchKw){
+      const kw=searchKw.toLowerCase();
+      if(!(p.brand.toLowerCase().includes(kw)||p.name.toLowerCase().includes(kw)||p.category.toLowerCase().includes(kw)))return false;
+    }
+    return true;
+  });
+  if(!list.length){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><div>暂无产品，点击右下角 + 添加</div></div>`;
+    return;
+  }
+  grid.innerHTML=list.map(p=>productCard(p)).join('');
+  grid.querySelectorAll('.pcard').forEach(c=>{
+    c.onclick=()=>openDetail(c.dataset.id);
+  });
+}
+
+function productCard(p){
+  const st=calcStatus(p);
+  const si=statusInfo(st);
+  const stars=Array(5).fill(0).map((_,i)=>i<p.score?'<svg class="star" viewBox="0 0 24 24" fill="currentColor"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>':'<svg class="star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>').join('');
+  const seasonChips=(p.seasons||[]).map(s=>`<span class="season-chip">${s}</span>`).join('');
+  return `
+    <div class="pcard" data-id="${p.id}">
+      <div class="pcard-head">
+        <div style="min-width:0;flex:1">
+          <div class="pcard-brand">${p.brand}</div>
+          <div class="pcard-name">${p.name}</div>
+          <div class="pcard-spec">${p.category} · ${p.spec||'—'}${p.bundle?`<span class="bundle-chip">${p.bundle}</span>`:''}</div>
+        </div>
+        <span class="status-chip ${si.c}">${si.t}</span>
+      </div>
+      <div class="pcard-meta">
+        <div class="meta-item"><span class="meta-label">购于</span>${fmtDate(p.buyDate)}</div>
+        <div class="meta-item"><span class="meta-label">金额</span>${fmtMoney(p.price)}</div>
+        <div class="meta-item"><span class="meta-label">启用</span>${fmtDate(p.openDate)}</div>
+        <div class="meta-item"><span class="meta-label">空瓶</span>${fmtDate(p.emptyDate)}</div>
+        <div class="meta-item"><span class="meta-label">保质</span>${p.shelfLife||'—'}</div>
+        <div class="meta-item"><span class="meta-label">到期</span>${p.expireDate?fmtDate(p.expireDate):'—'}</div>
+      </div>
+      ${st==='using'||st==='sealed'?`<div class="stock-bar"><div class="stock-fill" style="width:${p.stock}%"></div></div>`:''}
+      <div class="pcard-foot">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="score-stars">${stars}</div>
+          ${p.repurchase==='yes'?'<span class="rebuy-chip rb-yes">回购</span>':''}
+        </div>
+        <div class="season-chips">${seasonChips||'<span class="season-chip" style="visibility:hidden">·</span>'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDashboard(){
+  const using=products.filter(p=>calcStatus(p)==='using').length;
+  const sealed=products.filter(p=>calcStatus(p)==='sealed').length;
+  const empty=products.filter(p=>p.status==='empty').length;
+  const warning=products.filter(p=>calcStatus(p)==='warning').length;
+  const totalSpend=products.reduce((s,p)=>s+(Number(p.price)||0),0);
+  $('#statRow').innerHTML=`
+    <div class="stat-box"><div class="stat-num">${products.length}</div><div class="stat-label">总产品</div></div>
+    <div class="stat-box"><div class="stat-num green">${using}</div><div class="stat-label">使用中</div></div>
+    <div class="stat-box"><div class="stat-num">${sealed}</div><div class="stat-label">未开封</div></div>
+    <div class="stat-box"><div class="stat-num rose">${warning}</div><div class="stat-label">临期/过期</div></div>
+    <div class="stat-box" style="grid-column:1/-1;background:var(--primary-soft)"><div class="stat-num">${fmtMoney(totalSpend)}</div><div class="stat-label">累计花费 · 已空瓶 ${empty}</div></div>
+  `;
+  renderSpendChart();
+  renderCategoryChart();
+  renderStatusChart(using,sealed,empty,warning);
+}
+
+function renderSpendChart(){
+  // 按月聚合
+  const map={};
+  products.forEach(p=>{
+    if(p.buyDate){
+      const m=p.buyDate.slice(0,7);
+      map[m]=(map[m]||0)+(Number(p.price)||0);
+    }
+  });
+  const months=Object.keys(map).sort();
+  const recent=months.slice(-6);
+  if(!recent.length){$('#spendChart').innerHTML='<div style="text-align:center;color:var(--ink3);font-size:12px;padding:12px">暂无消费数据</div>';return}
+  const max=Math.max(...recent.map(m=>map[m]),1);
+  const W=320,H=140,pad=30,gap=(W-pad*2)/Math.max(recent.length-1,1);
+  const pts=recent.map((m,i)=>[pad+i*gap,H-pad-(H-pad*2)*(map[m]/max)]);
+  const path=pts.map((p,i)=>(i?'L':'M')+p[0]+','+p[1]).join(' ');
+  const area=path+`L${pts[pts.length-1][0]},${H-pad}L${pts[0][0]},${H-pad}Z`;
+  const labels=recent.map((m,i)=>`<text x="${pts[i][0]}" y="${H-pad+14}" text-anchor="middle" font-size="9" fill="#a89e94">${m.slice(5)}月</text>`).join('');
+  const vals=recent.map((m,i)=>`<text x="${pts[i][0]}" y="${pts[i][1]-6}" text-anchor="middle" font-size="9" fill="#9a6638" font-weight="600">¥${map[m]}</text>`).join('');
+  const dots=pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#c08552"/>`).join('');
+  $('#spendChart').innerHTML=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}"><path d="${area}" fill="#f4e8dc"/><path d="${path}" fill="none" stroke="#c08552" stroke-width="2"/>${dots}${labels}${vals}</svg>`;
+}
+
+function renderCategoryChart(){
+  const map={};
+  products.forEach(p=>{const c=p.category||'其他';map[c]=(map[c]||0)+1});
+  const arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const total=arr.reduce((s,a)=>s+a[1],0)||1;
+  const colors=['#c08552','#d4a44e','#7ba068','#6f93b0','#c75b5b','#9b7bb8','#e89b6c','#a8b884','#7d8a93','#d4b8a0','#b89070','#8a9b8e'];
+  let acc=0;
+  const R=50,cx=60,cy=60;
+  let slices='';
+  arr.forEach((a,i)=>{
+    const v=a[1]/total;
+    const start=acc*2*Math.PI-Math.PI/2;
+    acc+=v;
+    const end=acc*2*Math.PI-Math.PI/2;
+    const x1=cx+R*Math.cos(start),y1=cy+R*Math.sin(start);
+    const x2=cx+R*Math.cos(end),y2=cy+R*Math.sin(end);
+    const large=v>0.5?1:0;
+    if(v===1){slices+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="${colors[i%colors.length]}"/>`}
+    else{slices+=`<path d="M${cx},${cy} L${x1},${y1} A${R},${R} 0 ${large} 1 ${x2},${y2} Z" fill="${colors[i%colors.length]}"/>`}
+  });
+  const legend=arr.map((a,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);min-width:100px"><span style="width:10px;height:10px;border-radius:2px;background:${colors[i%colors.length]}"></span>${a[0]} <span style="color:var(--ink3)">${a[1]}</span></div>`).join('');
+  $('#categoryChart').innerHTML=`<svg viewBox="0 0 120 120" style="width:120px;height:120px;flex-shrink:0">${slices}<circle cx="${cx}" cy="${cy}" r="28" fill="#fff"/><text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="14" font-weight="700" fill="#2d2622">${total}</text><text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="8" fill="#a89e94">件</text></svg><div style="display:flex;flex-wrap:wrap;gap:6px 16px;flex:1">${legend}</div>`;
+}
+
+function renderStatusChart(using,sealed,empty,warning){
+  const data=[{t:'使用中',v:using,c:'#7ba068'},{t:'未开封',v:sealed,c:'#7d8a93'},{t:'已空瓶',v:empty,c:'#a89e94'},{t:'临期',v:warning,c:'#c75b5b'}];
+  const total=data.reduce((s,d)=>s+d.v,0)||1;
+  const max=Math.max(...data.map(d=>d.v),1);
+  const bars=data.map(d=>`
+    <div style="flex:1;text-align:center">
+      <div style="height:80px;display:flex;align-items:flex-end;justify-content:center">
+        <div style="width:60%;max-width:40px;background:${d.c};border-radius:6px 6px 0 0;height:${(d.v/max)*70}px;min-height:4px"></div>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:${d.c};margin-top:4px">${d.v}</div>
+      <div style="font-size:10px;color:var(--ink3)">${d.t}</div>
+    </div>
+  `).join('');
+  $('#statusChart').innerHTML=`<div style="flex:1;display:flex;gap:8px">${bars}</div>`;
+}
+
+function renderReview(){
+  // filters
+  const sf=$('#reviewFilter');
+  const seasonOpts=['all',...SEASONS];
+  const scoreOpts=['all','5','4','3','2','1'];
+  let html='<span style="font-size:11px;color:var(--ink3);align-self:center;margin-right:4px">季节</span>';
+  html+=seasonOpts.map(s=>`<button class="filter-opt ${reviewSeason===s?'active':''}" data-s="${s}">${s==='all'?'全部':s}</button>`).join('');
+  html+='<span style="font-size:11px;color:var(--ink3);align-self:center;margin:0 4px 0 8px">评分</span>';
+  html+=scoreOpts.map(s=>`<button class="filter-opt ${reviewScore===s?'active':''}" data-sc="${s}">${s==='all'?'全部':s+'星'}</button>`).join('');
+  sf.innerHTML=html;
+  sf.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{reviewSeason=b.dataset.s;renderReview()});
+  sf.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{reviewScore=b.dataset.sc;renderReview()});
+
+  let list=products.filter(p=>p.feeling);
+  if(reviewSeason!=='all')list=list.filter(p=>(p.seasons||[]).includes(reviewSeason));
+  if(reviewScore!=='all')list=list.filter(p=>p.score===Number(reviewScore));
+  list.sort((a,b)=>b.score-a.score);
+  const box=$('#reviewList');
+  if(!list.length){box.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><div>暂无使用感受记录</div></div>`;return}
+  box.innerHTML=list.map(p=>{
+    const stars=Array(5).fill(0).map((_,i)=>i<p.score?'★':'☆').join('');
+    const st=calcStatus(p);
+    const si=statusInfo(st);
+    return `<div class="panel" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0">
+          <div style="font-size:11px;color:var(--primary2);font-weight:600">${p.brand}</div>
+          <div style="font-size:14px;font-weight:600;margin-top:2px">${p.name}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">${p.category} · ${p.spec||'—'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="color:var(--gold);font-size:13px;letter-spacing:1px">${stars}</div>
+          <span class="status-chip ${si.c}" style="margin-top:4px">${si.t}</span>
+        </div>
+      </div>
+      <div class="review-box">${p.feeling}</div>
+      ${(p.seasons||[]).length?`<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${p.seasons.map(s=>`<span class="season-chip">适合 ${s}季</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ---------- wall ----------
+function renderWall(){
+  const empties=products.filter(p=>p.status==='empty').sort((a,b)=>(b.emptyDate||b.createdAt||'').localeCompare(a.emptyDate||a.createdAt||''));
+  const statBox=$('#wallStats'),grid=$('#wallGrid');
+  if(!empties.length){
+    statBox.innerHTML='';
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2h6M10 2v4l-3 4v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9l-3-4V2"/></svg><div>还没有空瓶记录<br>产品用完后把库存标记为「空瓶」，就会出现在这里</div></div>`;
+    return;
+  }
+  const total=empties.reduce((s,p)=>s+(Number(p.price)||0),0);
+  const daysArr=empties.filter(p=>p.openDate&&p.emptyDate).map(p=>daysBetween(p.openDate,p.emptyDate)).filter(d=>d>0);
+  const totalDays=daysArr.reduce((a,b)=>a+b,0);
+  const avgDays=daysArr.length?Math.round(totalDays/daysArr.length):0;
+  const perDay=totalDays?('¥'+(total/totalDays).toFixed(1)):'—';
+  statBox.innerHTML=`
+    <div class="stat-box"><div class="stat-num">${empties.length}</div><div class="stat-label">空瓶总数</div></div>
+    <div class="stat-box"><div class="stat-num">${fmtMoney(total)}</div><div class="stat-label">空瓶累计花费</div></div>
+    <div class="stat-box"><div class="stat-num">${avgDays||'—'}</div><div class="stat-label">平均用完天数</div></div>
+    <div class="stat-box"><div class="stat-num">${perDay}</div><div class="stat-label">平均日耗成本</div></div>`;
+  grid.innerHTML=empties.map(p=>{
+    const used=p.openDate&&p.emptyDate?daysBetween(p.openDate,p.emptyDate):0;
+    const daily=used>0&&p.price?('¥'+(p.price/used).toFixed(1)):'—';
+    const stars=Array(5).fill(0).map((_,i)=>i<p.score?'★':'☆').join('');
+    const rbChip=p.repurchase==='yes'?'<span class="rebuy-chip rb-yes">想回购</span>':p.repurchase==='no'?'<span class="rebuy-chip rb-no">不回购</span>':p.repurchase==='maybe'?'<span class="rebuy-chip rb-maybe">观望</span>':'';
+    return `<div class="pcard" data-id="${p.id}">
+      <div class="pcard-head">
+        <div style="min-width:0;flex:1">
+          <div class="pcard-brand">${p.brand}</div>
+          <div class="pcard-name">${p.name}</div>
+          <div class="pcard-spec">${p.category} · ${p.spec||'—'}</div>
+        </div>
+        <span class="status-chip st-empty">空瓶</span>
+      </div>
+      <div class="pcard-meta">
+        <div class="meta-item"><span class="meta-label">花费</span>${fmtMoney(p.price)}</div>
+        <div class="meta-item"><span class="meta-label">用了</span>${used>0?used+' 天':'—'}</div>
+        <div class="meta-item"><span class="meta-label">空瓶于</span>${fmtDate(p.emptyDate)}</div>
+        <div class="meta-item"><span class="meta-label">日耗</span>${daily}</div>
+      </div>
+      <div class="pcard-foot">
+        <div style="color:var(--gold);font-size:13px;letter-spacing:1px">${stars}</div>
+        ${rbChip}
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.pcard').forEach(c=>c.onclick=()=>openDetail(c.dataset.id));
+}
+
+// ---------- rebuy ----------
+let rebuyFilter='yes';
+function renderRebuy(){
+  const sf=$('#rebuyFilter');
+  const opts=[['yes','想回购'],['maybe','观望'],['no','不回购'],['all','全部标注'],['none','未标注']];
+  sf.innerHTML=opts.map(([k,t])=>`<button class="filter-opt ${rebuyFilter===k?'active':''}" data-rf="${k}">${t}</button>`).join('');
+  sf.querySelectorAll('[data-rf]').forEach(b=>b.onclick=()=>{rebuyFilter=b.dataset.rf;renderRebuy()});
+  let list=products.filter(p=>{
+    if(rebuyFilter==='all')return p.repurchase!=='';
+    if(rebuyFilter==='none')return p.repurchase==='';
+    return p.repurchase===rebuyFilter;
+  });
+  // 空瓶的排最前（最快需要回购），其次按评分
+  list.sort((a,b)=>{
+    const ea=a.status==='empty'?0:1,eb=b.status==='empty'?0:1;
+    if(ea!==eb)return ea-eb;
+    return (b.score||0)-(a.score||0);
+  });
+  const box=$('#rebuyList');
+  if(!list.length){
+    box.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><div>这里还没有产品<br>在编辑产品时标注「回购意愿」，想回购的会汇总到这里</div></div>`;
+    return;
+  }
+  box.innerHTML=list.map(p=>{
+    const si=statusInfo(calcStatus(p));
+    const recs=priceRecordsFor(p);
+    const minP=recs.length?Math.min(...recs.map(r=>r.price)):null;
+    const stars=Array(5).fill(0).map((_,i)=>i<p.score?'★':'☆').join('');
+    return `<div class="panel" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:11px;color:var(--primary2);font-weight:600">${p.brand} <span class="status-chip ${si.c}" style="font-size:9px;padding:1px 6px">${si.t}</span></div>
+          <div style="font-size:14px;font-weight:600;margin-top:3px">${p.name}</div>
+          <div style="font-size:11px;color:var(--gold);margin-top:2px;letter-spacing:1px">${stars}</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:4px">${minP!==null?`历史最低 <b style="color:var(--green)">¥${minP}</b> · `:''}${recs.length}条价格记录</div>
+        </div>
+        <button class="rebuy-act" data-id="${p.id}">已回购</button>
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.rebuy-act').forEach(b=>b.onclick=()=>{
+    const p=products.find(x=>x.id===b.dataset.id);
+    openForm(null,{brand:p.brand,name:p.name,category:p.category,spec:p.spec,seasons:(p.seasons||[]).slice(),score:p.score,repurchase:p.repurchase||'yes'});
+  });
+}
+
+// ---------- price compare ----------
+function miniPriceChart(recs){
+  const W=280,H=100,pad=30;
+  const prices=recs.map(r=>r.price);
+  const min=Math.min(...prices),max=Math.max(...prices);
+  const span=(max-min)||1;
+  const n=recs.length;
+  const xs=recs.map((_,i)=>pad+(W-pad*2)*(n===1?0.5:i/(n-1)));
+  const ys=recs.map(r=>H-pad-(H-pad*2)*((r.price-min)/span));
+  const path=xs.map((x,i)=>(i?'L':'M')+x+','+ys[i]).join(' ');
+  let labels='';
+  if(n<=5){recs.forEach((r,i)=>{labels+=`<text x="${xs[i]}" y="${ys[i]-7}" text-anchor="middle" font-size="9" fill="#9a6638" font-weight="600">¥${r.price}</text>`})}
+  const dl=i=>recs[i].date.slice(5).replace('-','/');
+  labels+=`<text x="${xs[0]}" y="${H-8}" text-anchor="middle" font-size="8" fill="#a89e94">${dl(0)}</text>`;
+  if(n>1)labels+=`<text x="${xs[n-1]}" y="${H-8}" text-anchor="middle" font-size="8" fill="#a89e94">${dl(n-1)}</text>`;
+  const dots=xs.map((x,i)=>`<circle cx="${x}" cy="${ys[i]}" r="3" fill="#c08552"/>`).join('');
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}"><path d="${path}" fill="none" stroke="#c08552" stroke-width="2"/>${dots}${labels}</svg>`;
+}
+function renderPrice(){
+  const box=$('#priceList');
+  const groups={};
+  products.forEach(p=>{
+    const k=gKey(p);
+    if(!groups[k])groups[k]={brand:p.brand,name:p.name,spec:p.spec||'',recs:priceRecordsFor(p)};
+  });
+  const arr=Object.entries(groups).map(([k,g])=>({k,...g})).filter(g=>g.recs.length>0);
+  arr.sort((a,b)=>b.recs.length-a.recs.length||a.k.localeCompare(b.k));
+  if(!arr.length){
+    box.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><div>暂无价格记录<br>添加产品时填写购买金额和时间即可自动生成</div></div>`;
+    return;
+  }
+  box.innerHTML=arr.map(g=>{
+    const recs=g.recs;
+    const prices=recs.map(r=>r.price);
+    const min=Math.min(...prices);
+    const avg=Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
+    const latest=recs[recs.length-1],first=recs[0];
+    let trend,cls;
+    if(latest.price<first.price){trend='降价 ↓';cls='down'}
+    else if(latest.price>first.price){trend='涨价 ↑';cls='up'}
+    else{trend='持平 →';cls='flat'}
+    const sq=parseSpecQty(g.spec);
+    const unitLine=sq?`<span>单位价 <b style="color:var(--blue)">¥${(latest.price/sq.qty).toFixed(1)}/${sq.unit}</b></span>`:'';
+    const rows=recs.map(r=>`<div class="price-row"><span style="color:var(--ink3)">${fmtDate(r.date)}</span><span style="font-weight:600">¥${r.price}</span><span style="color:var(--ink3);font-size:11px;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.channel||''}</span></div>`).join('');
+    return `<div class="panel" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <div style="min-width:0">
+          <div style="font-size:11px;color:var(--primary2);font-weight:600">${g.brand}</div>
+          <div style="font-size:14px;font-weight:600">${g.name}</div>
+          ${g.spec?`<div style="font-size:11px;color:var(--ink3);margin-top:1px">${g.spec}</div>`:''}
+        </div>
+        <span class="trend ${cls}">${trend}</span>
+      </div>
+      ${recs.length>1?miniPriceChart(recs):''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:6px 0;font-size:11px;color:var(--ink2)">
+        <span>最低 <b style="color:var(--green)">¥${min}</b></span>
+        <span>均价 <b>¥${avg}</b></span>
+        <span>最新 <b style="color:var(--primary2)">¥${latest.price}</b></span>
+        ${unitLine}
+      </div>
+      <div style="border-top:1px dashed var(--line);margin-top:4px">${rows}</div>
+      <button class="btn" style="margin-top:10px" data-key="${encodeURIComponent(g.k)}">+ 记一笔价格</button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>openPriceModal(decodeURIComponent(b.dataset.key)));
+}
+
+// ---------- form ----------
+function openForm(id,prefill){
+  editingId=id||null;
+  prefill=prefill||{};
+  const p=id?products.find(x=>x.id===id):prefill;
+  $('#formTitle').textContent=id?'编辑产品':'添加产品';
+  const body=$('#formBody');
+  body.innerHTML=`
+    ${id?'':`<div class="bundle-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><span>买的是套装/礼盒（一价多物）？</span><button type="button" id="goBundleBtn">套装录入 →</button></div>`}
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">品牌 <span class="req">*</span></label><input class="form-input" id="f-brand" value="${p.brand||''}" placeholder="如 兰蔻"></div>
+      <div class="form-group"><label class="form-label">产品名 <span class="req">*</span></label><input class="form-input" id="f-name" value="${p.name||''}" placeholder="如 小黑瓶"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">品类</label>
+        <select class="form-select" id="f-category">${CATEGORIES.map(c=>`<option ${p.category===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="form-group"><label class="form-label">规格</label><input class="form-input" id="f-spec" value="${p.spec||''}" placeholder="如 50ml"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">购买金额 ¥</label><input class="form-input" id="f-price" type="number" inputmode="decimal" value="${p.price||''}" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">购买时间</label><input class="form-input" id="f-buyDate" type="date" value="${p.buyDate||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">启用时间</label><input class="form-input" id="f-openDate" type="date" value="${p.openDate||''}"></div>
+      <div class="form-group"><label class="form-label">空瓶时间</label><input class="form-input" id="f-emptyDate" type="date" value="${p.emptyDate||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">保质期</label><input class="form-input" id="f-shelfLife" value="${p.shelfLife||''}" placeholder="如 12个月PAO"></div>
+      <div class="form-group"><label class="form-label">到期日</label><input class="form-input" id="f-expireDate" type="date" value="${p.expireDate||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">库存余量</label>
+      <div class="stock-pick" id="stockPick">
+        ${[100,75,50,30,15,0].map(n=>`<button type="button" class="stock-opt ${p.stock===n?'on':''}" data-n="${n}">${n===0?'空瓶':n+'%'}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">适合季节</label>
+      <div class="season-pick" id="seasonPick">
+        ${SEASONS.map(s=>`<button type="button" class="season-opt ${(p.seasons||[]).includes(s)?'on':''}" data-s="${s}">${s}季</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">综合评分</label>
+      <div class="score-pick" id="scorePick">
+        ${[1,2,3,4,5].map(n=>`<button type="button" class="score-opt ${p.score===n?'on':''}" data-n="${n}"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg></button>`).join('')}
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">回购意愿</label>
+      <div class="stock-pick" id="rbPick">
+        <button type="button" class="stock-opt ${p.repurchase==='yes'?'on':''}" data-rb="yes">想回购</button>
+        <button type="button" class="stock-opt ${p.repurchase==='maybe'?'on':''}" data-rb="maybe">观望</button>
+        <button type="button" class="stock-opt ${p.repurchase==='no'?'on':''}" data-rb="no">不回购</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">使用感受</label><textarea class="form-textarea" id="f-feeling" placeholder="质地、上脸感受、效果、是否回购...">${p.feeling||''}</textarea></div>
+  `;
+  const gbb=body.querySelector('#goBundleBtn');
+  if(gbb)gbb.onclick=()=>{closeForm();openBundleForm()};
+  // interactions
+  let stockVal=p.stock!=null?p.stock:100;
+  let scoreVal=p.score||0;
+  let rbVal=p.repurchase||'';
+  let seasons=p.seasons?[...p.seasons]:[];
+  body.querySelector('#stockPick').querySelectorAll('.stock-opt').forEach(b=>b.onclick=()=>{
+    body.querySelectorAll('.stock-opt').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');stockVal=Number(b.dataset.n);
+  });
+  body.querySelector('#scorePick').querySelectorAll('.score-opt').forEach(b=>b.onclick=()=>{
+    body.querySelectorAll('.score-opt').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');scoreVal=Number(b.dataset.n);
+  });
+  body.querySelector('#seasonPick').querySelectorAll('.season-opt').forEach(b=>b.onclick=()=>{
+    b.classList.toggle('on');const s=b.dataset.s;
+    if(seasons.includes(s))seasons=seasons.filter(x=>x!==s);else seasons.push(s);
+  });
+  body.querySelector('#rbPick').querySelectorAll('.stock-opt').forEach(b=>b.onclick=()=>{
+    body.querySelectorAll('#rbPick .stock-opt').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');rbVal=b.dataset.rb;
+  });
+  $('#formModal').classList.add('show');
+  $('#formSave').onclick=()=>{
+    const brand=body.querySelector('#f-brand').value.trim();
+    const name=body.querySelector('#f-name').value.trim();
+    if(!brand||!name){toast('请填写品牌和产品名');return}
+    // 状态由库存和启用时间决定：空瓶 > 使用中(已开封) > 未开封
+    const openD=body.querySelector('#f-openDate').value;
+    let status;
+    if(stockVal===0)status='empty';
+    else if(openD)status='using';
+    else status='sealed';
+    const obj={
+      id:p.id||uid(),
+      brand,name,
+      category:body.querySelector('#f-category').value,
+      spec:body.querySelector('#f-spec').value.trim(),
+      price:body.querySelector('#f-price').value,
+      buyDate:body.querySelector('#f-buyDate').value,
+      openDate:body.querySelector('#f-openDate').value,
+      emptyDate:body.querySelector('#f-emptyDate').value,
+      shelfLife:body.querySelector('#f-shelfLife').value.trim(),
+      expireDate:body.querySelector('#f-expireDate').value,
+      stock:stockVal,
+      seasons,
+      score:scoreVal,
+      repurchase:rbVal,
+      feeling:body.querySelector('#f-feeling').value.trim(),
+      status,
+      createdAt:p.createdAt||today()
+    };
+    if(id){const i=products.findIndex(x=>x.id===id);products[i]=obj;toast('已更新')}
+    else{products.unshift(obj);toast('已添加')}
+    saveData();render();closeForm();
+  };
+}
+
+function closeForm(){
+  $('#formModal').classList.remove('show');
+  editingId=null;
+}
+
+// ---------- detail ----------
+function openDetail(id){
+  const p=products.find(x=>x.id===id);
+  if(!p)return;
+  const st=calcStatus(p);
+  const si=statusInfo(st);
+  const stars=Array(5).fill(0).map((_,i)=>i<p.score?'★':'☆').join('');
+  $('#detailTitle').textContent=p.brand+' · '+p.name;
+  $('#detailBody').innerHTML=`
+    <div style="text-align:center;padding:8px 0 16px">
+      <span class="status-chip ${si.c}" style="padding:6px 14px;font-size:12px">${si.t}</span>
+      <div style="color:var(--gold);font-size:18px;letter-spacing:2px;margin-top:8px">${stars}</div>
+    </div>
+    <div class="detail-row"><span class="detail-label">品类</span><span class="detail-val">${p.category||'—'}</span></div>
+    <div class="detail-row"><span class="detail-label">规格</span><span class="detail-val">${p.spec||'—'}</span></div>
+    ${p.bundle?`<div class="detail-row"><span class="detail-label">所属套装</span><span class="detail-val">${p.bundle} · 套装实付 ¥${p.bundleTotal||'—'}</span></div>`:''}
+    <div class="detail-row"><span class="detail-label">购买金额</span><span class="detail-val">${fmtMoney(p.price)}</span></div>
+    <div class="detail-row"><span class="detail-label">购买时间</span><span class="detail-val">${fmtDate(p.buyDate)}</span></div>
+    <div class="detail-row"><span class="detail-label">启用时间</span><span class="detail-val">${fmtDate(p.openDate)}</span></div>
+    <div class="detail-row"><span class="detail-label">空瓶时间</span><span class="detail-val">${fmtDate(p.emptyDate)}</span></div>
+    <div class="detail-row"><span class="detail-label">保质期</span><span class="detail-val">${p.shelfLife||'—'}</span></div>
+    <div class="detail-row"><span class="detail-label">到期日</span><span class="detail-val">${p.expireDate?fmtDate(p.expireDate):'—'}</span></div>
+    <div class="detail-row"><span class="detail-label">库存余量</span><span class="detail-val">${p.stock!=null?p.stock+'%':'—'}</span></div>
+    <div class="detail-row"><span class="detail-label">适合季节</span><span class="detail-val">${(p.seasons||[]).join('、')||'—'}</span></div>
+    <div class="detail-row"><span class="detail-label">回购意愿</span><span class="detail-val">${p.repurchase==='yes'?'想回购':p.repurchase==='no'?'不回购':p.repurchase==='maybe'?'观望':'未标注'}</span></div>
+    ${p.feeling?`<div style="margin-top:14px"><div style="font-size:12px;color:var(--ink2);font-weight:600;margin-bottom:6px">使用感受</div><div class="review-box">${p.feeling}</div></div>`:''}
+  `;
+  $('#detailModal').classList.add('show');
+  $('#detailEdit').onclick=()=>{closeDetail();openForm(id)};
+  $('#detailDelete').onclick=()=>{
+    closeDetail();
+    showConfirm('确定要删除这个产品吗？',()=>{
+      products=products.filter(x=>x.id!==id);
+      saveData();render();toast('已删除');
+    });
+  };
+}
+function closeDetail(){$('#detailModal').classList.remove('show')}
+
+// ---------- confirm & toast ----------
+function showConfirm(text,cb){
+  $('#confirmText').textContent=text;
+  confirmCb=cb;
+  $('#confirmMask').classList.add('show');
+}
+function toast(msg){
+  const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ---------- backup ----------
+function exportData(){
+  const data={version:2,exportedAt:new Date().toISOString(),products,priceLogs};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='梳妆台备份_'+today()+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('已导出 '+products.length+' 条');
+}
+function importData(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.products||!Array.isArray(data.products))throw 0;
+      showConfirm(`将导入 ${data.products.length} 条数据，是否合并到现有数据？`,()=>{
+        const existing=new Set(products.map(p=>p.id));
+        let added=0;
+        data.products.forEach(p=>{
+          if(p.repurchase===undefined)p.repurchase='';
+          if(!existing.has(p.id)){products.push(p);added++}
+        });
+        if(data.priceLogs&&typeof data.priceLogs==='object'){
+          Object.entries(data.priceLogs).forEach(([k,arr])=>{
+            if(!Array.isArray(arr))return;
+            priceLogs[k]=priceLogs[k]||[];
+            arr.forEach(r=>{if(!priceLogs[k].some(x=>x.date===r.date&&x.price===r.price))priceLogs[k].push(r)});
+          });
+        }
+        saveData();render();toast('已导入 '+added+' 条');
+      });
+    }catch(err){toast('文件格式错误')}
+  };
+  reader.readAsText(file);
+}
+
+// ---------- events ----------
+function switchTab(tab){
+  currentTab=tab;
+  $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===tab));
+  $$('.view').forEach(v=>v.style.display='none');
+  $('#view-'+tab).style.display='block';
+  if(tab==='archive')renderArchive();
+  if(tab==='wall')renderWall();
+  if(tab==='rebuy')renderRebuy();
+  if(tab==='price')renderPrice();
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='review')renderReview();
+  if(tab==='today')renderToday();
+}
+
+$('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t)switchTab(t.dataset.tab)});
+$('.bottom-nav').addEventListener('click',e=>{const n=e.target.closest('.nav-item');if(n)switchTab(n.dataset.nav)});
+$('#fab').onclick=()=>openForm();
+$('#formClose').onclick=closeForm;
+$('#formCancel').onclick=closeForm;
+$('#detailClose').onclick=closeDetail;
+$('#exportBtn').onclick=exportData;
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value=''};
+$('#clearBtn').onclick=()=>{
+  showConfirm('确定要清空所有产品数据吗？此操作不可恢复！',()=>{
+    products=[];saveData();render();toast('已清空');
+  });
+};
+$('#confirmCancel').onclick=()=>{$('#confirmMask').classList.remove('show');confirmCb=null};
+$('#confirmOk').onclick=()=>{$('#confirmMask').classList.remove('show');if(confirmCb)confirmCb();confirmCb=null};
+$('#searchInput').oninput=e=>{searchKw=e.target.value.trim();renderArchive()};
+
+// ---------- price log modal ----------
+let priceKey=null;
+function openPriceModal(key){
+  priceKey=key;
+  $('#pf-date').value=today();
+  $('#pf-price').value='';
+  $('#pf-channel').value='';
+  const p=products.find(x=>gKey(x)===key);
+  $('#priceTitle').textContent='记价格 · '+(p?p.brand+' '+p.name:key.split('|').join(' '));
+  $('#priceModal').classList.add('show');
+}
+$('#priceClose').onclick=()=>$('#priceModal').classList.remove('show');
+$('#priceCancel').onclick=()=>$('#priceModal').classList.remove('show');
+$('#priceSave').onclick=()=>{
+  const price=Number($('#pf-price').value);
+  if(!price){toast('请填写价格');return}
+  const date=$('#pf-date').value||today();
+  priceLogs[priceKey]=priceLogs[priceKey]||[];
+  priceLogs[priceKey].push({date,price,channel:$('#pf-channel').value.trim()});
+  saveData();renderPrice();renderRebuy();
+  $('#priceModal').classList.remove('show');
+  toast('已记录价格');
+};
+$('#priceModal').addEventListener('click',e=>{if(e.target.id==='priceModal')e.target.classList.remove('show')});
+
+// close modal on mask click
+$('#formModal').addEventListener('click',e=>{if(e.target.id==='formModal')closeForm()});
+$('#detailModal').addEventListener('click',e=>{if(e.target.id==='detailModal')closeDetail()});
+
+// ---------- bundle entry ----------
+function addBundleItem(){
+  const wrap=$('#b-items');
+  const div=document.createElement('div');
+  div.className='b-item';
+  div.innerHTML=`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">品牌 <span class="req">*</span></label><input class="form-input bi-brand" placeholder="如 兰蔻"></div>
+      <div class="form-group"><label class="form-label">产品名 <span class="req">*</span></label><input class="form-input bi-name" placeholder="如 小黑瓶"></div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label class="form-label">品类</label><select class="form-select bi-cat">${CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">规格</label><input class="form-input bi-spec" placeholder="50ml"></div>
+      <div class="form-group"><label class="form-label">单买价 ¥ <span class="req">*</span></label><input class="form-input bi-ref" type="number" inputmode="decimal"></div>
+    </div>
+    <div class="b-item-foot">
+      <span class="b-alloc">分摊 ¥—</span>
+      <button type="button" class="bi-del">删除</button>
+    </div>`;
+  wrap.appendChild(div);
+  div.querySelector('.bi-del').onclick=()=>{div.remove();updateBundleCalc()};
+  div.querySelectorAll('input').forEach(i=>i.addEventListener('input',updateBundleCalc));
+  updateBundleCalc();
+}
+function updateBundleCalc(){
+  const total=Number($('#b-total').value)||0;
+  const items=[...document.querySelectorAll('#b-items .b-item')];
+  const refs=items.map(it=>Number(it.querySelector('.bi-ref').value)||0);
+  const sum=refs.reduce((a,b)=>a+b,0);
+  items.forEach((it,i)=>{
+    const alloc=(sum>0&&total>0)?Math.round(total*refs[i]/sum):null;
+    it.querySelector('.b-alloc').textContent=alloc!==null?('分摊 ¥'+alloc):'分摊 ¥—';
+  });
+  const sm=$('#b-summary');
+  if(sum>0&&total>0){
+    const save=sum-total;
+    sm.style.display='block';
+    sm.innerHTML=`单买合计 <b>¥${sum}</b> · 实付 <b>¥${total}</b> · ${save>0?`省 <b style="color:var(--green)">¥${save}</b>（${Math.round(save/sum*100)}%）`:'<span style="color:var(--rose)">比单买还贵，检查一下价格</span>'}`;
+  }else{sm.style.display='none'}
+}
+function openBundleForm(){
+  $('#b-name').value='';
+  $('#b-date').value=today();
+  $('#b-total').value='';
+  $('#b-channel').value='';
+  $('#b-items').innerHTML='';
+  $('#b-summary').style.display='none';
+  addBundleItem();addBundleItem();
+  $('#bundleModal').classList.add('show');
+}
+function saveBundle(){
+  const name=$('#b-name').value.trim();
+  const channel=$('#b-channel').value.trim();
+  const date=$('#b-date').value||today();
+  const total=Number($('#b-total').value);
+  if(!total||total<=0){toast('请填写套装总价');return}
+  const items=[...document.querySelectorAll('#b-items .b-item')];
+  if(items.length<2){toast('套装至少需要 2 件产品');return}
+  const parsed=items.map(it=>({
+    brand:it.querySelector('.bi-brand').value.trim(),
+    name:it.querySelector('.bi-name').value.trim(),
+    category:it.querySelector('.bi-cat').value,
+    spec:it.querySelector('.bi-spec').value.trim(),
+    ref:Number(it.querySelector('.bi-ref').value)||0
+  }));
+  if(parsed.some(x=>!x.brand||!x.name)){toast('每件都要填品牌和产品名');return}
+  if(parsed.some(x=>x.ref<=0)){toast('每件都要填单买参考价（用于分摊）');return}
+  const sum=parsed.reduce((s,x)=>s+x.ref,0);
+  const label=name?name+(channel?'·'+channel:''):(channel||'套装');
+  let used=0;
+  parsed.forEach((x,i)=>{
+    // 最后一件吃掉舍入余数，保证分摊总和 = 套装总价
+    const alloc=(i===parsed.length-1)?(total-used):Math.round(total*x.ref/sum);
+    used+=alloc;
+    products.unshift({
+      id:uid(),brand:x.brand,name:x.name,category:x.category,spec:x.spec,
+      price:alloc,buyDate:date,openDate:'',emptyDate:'',expireDate:'',shelfLife:'',
+      stock:100,seasons:[],score:0,feeling:'',repurchase:'',
+      status:'sealed',bundle:label,bundleTotal:total,createdAt:today()
+    });
+  });
+  saveData();render();
+  $('#bundleModal').classList.remove('show');
+  switchTab('archive');
+  toast('已生成 '+parsed.length+' 条套装记录（金额已分摊）');
+}
+$('#b-add').onclick=addBundleItem;
+$('#b-cancel').onclick=()=>$('#bundleModal').classList.remove('show');
+$('#bundleClose').onclick=()=>$('#bundleModal').classList.remove('show');
+$('#b-save').onclick=saveBundle;
+$('#b-total').addEventListener('input',updateBundleCalc);
+$('#bundleModal').addEventListener('click',e=>{if(e.target.id==='bundleModal')e.target.classList.remove('show')});
+
+// init
+loadData();
+render();
+</script>
+</body>
+</html>
